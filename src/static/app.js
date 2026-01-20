@@ -20,21 +20,48 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const spotsLeft = details.max_participants - details.participants.length;
 
-        // Build participants list HTML
+        // Build participants list HTML with delete icon
         let participantsHTML = `
           <div class="activity-card-participants">
             <div class="activity-card-participants-title">Participants</div>
-            <ul class="activity-card-participants-list">
+            <ul class="activity-card-participants-list" style="list-style-type: none; padding-left: 0;">
               ${
                 details.participants.length > 0
                   ? details.participants.map(
-                      (p) => `<li>${p}</li>`
+                      (p) => `
+                        <li style="display: flex; align-items: center;">
+                          <span style="flex: 1;">${p}</span>
+                          <button class="delete-participant-btn" title="Unregister participant" data-activity="${name}" data-email="${p}" style="margin-left: 8px; background: none; border: none; cursor: pointer; font-size: 18px;">🗑️</button>
+                        </li>
+                      `
                     ).join("")
                   : `<li><em>No participants yet</em></li>`
               }
             </ul>
           </div>
         `;
+      // Add event listeners for delete buttons after rendering
+      setTimeout(() => {
+        document.querySelectorAll('.delete-participant-btn').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            const activity = btn.getAttribute('data-activity');
+            const email = btn.getAttribute('data-email');
+            if (confirm(`Unregister ${email} from ${activity}?`)) {
+              try {
+                const response = await fetch(`/activities/${encodeURIComponent(activity)}/unregister?email=${encodeURIComponent(email)}`, { method: 'DELETE' });
+                if (!response.ok) {
+                  const result = await response.json();
+                  alert(result.detail || 'Failed to unregister participant');
+                } else {
+                  fetchActivities();
+                }
+              } catch (error) {
+                alert('Failed to unregister participant');
+              }
+            }
+          });
+        });
+      }, 0);
 
         activityCard.innerHTML = `
           <h4>${name}</h4>
@@ -79,6 +106,7 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        fetchActivities(); // Refresh activities list after successful signup
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
